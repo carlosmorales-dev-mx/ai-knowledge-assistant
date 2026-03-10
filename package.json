@@ -1,0 +1,14 @@
+{
+    "name": "ai-knowledge-assistant",
+    "private": true,
+    "version": "1.0.0",
+    "description": "AI Knowledge Assistant built with Node.js, Express, Prisma, Supabase, ChromaDB and Gemini.",
+    "license": "MIT",
+    "packageManager": "pnpm@10.32.0",
+    "scripts": {
+        "dev": "echo \"Root dev script pending setup\"",
+        "build": "echo \"Root build script pending setup\"",
+        "lint": "echo \"Root lint script pending setup\"",
+        "test": "echo \"Root test script pending setup\""
+    }
+}
