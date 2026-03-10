@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import authRoutes from "./modules/auth/auth.routes.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 
 const app = express();
@@ -15,6 +16,8 @@ app.get("/health", (_req, res) => {
         message: "Backend is running",
     });
 });
+
+app.use("/auth", authRoutes);
 
 app.use(errorHandler);
 
