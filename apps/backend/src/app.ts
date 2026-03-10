@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import { errorHandler } from "./middlewares/error-handler.js";
 
 const app = express();
 
@@ -14,5 +15,7 @@ app.get("/health", (_req, res) => {
         message: "Backend is running",
     });
 });
+
+app.use(errorHandler);
 
 export default app;
