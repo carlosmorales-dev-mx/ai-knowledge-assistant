@@ -1,0 +1,78 @@
+import { randomUUID } from "node:crypto";
+import { AppError } from "../../shared/errors/app-error.js";
+import { documentProcessingService } from "./document-processing.service.js";
+import { documentStorageService } from "./document-storage.service.js";
+import { documentsRepository } from "./documents.repository.js";
+
+function sanitizeFilename(originalName: string): string {
+    const withoutExtension = originalName.replace(/\.pdf$/i, "");
+
+    const sanitizedBase = withoutExtension
+        .normalize("NFKD")
+        .replace(/[^\w\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .toLowerCase();
+
+    return `${sanitizedBase || "document"}.pdf`;
+}
+
+export class DocumentsService {
+    async listUserDocuments(userId: string) {
+        return documentsRepository.findManyByUserId(userId);
+    }
+
+    async getUserDocumentById(documentId: string, userId: string) {
+        const document = await documentsRepository.findByIdAndUserId(
+            documentId,
+            userId
+        );
+
+        if (!document) {
+            throw new AppError("Document not found", 404);
+        }
+
+        return document;
+    }
+
+    async createDocumentUpload(input: {
+        userId: string;
+        file: Express.Multer.File | undefined;
+    }) {
+        const { userId, file } = input;
+
+        if (!file) {
+            throw new AppError("PDF file is required", 400);
+        }
+
+        if (file.mimetype !== "application/pdf") {
+            throw new AppError("Only PDF files are allowed", 400);
+        }
+
+        const documentId = randomUUID();
+        const filename = sanitizeFilename(file.originalname);
+        const storagePath = `documents/${userId}/${documentId}/${filename}`;
+
+        await documentStorageService.upload({
+            storagePath,
+            fileBuffer: file.buffer,
+            mimeType: file.mimetype,
+        });
+
+        await documentsRepository.create({
+            id: documentId,
+            userId,
+            filename,
+            originalName: file.originalname,
+            storagePath,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+        });
+
+        await documentProcessingService.process(documentId);
+
+        return documentsRepository.findByIdAndUserId(documentId, userId);
+    }
+}
+
+export const documentsService = new DocumentsService();

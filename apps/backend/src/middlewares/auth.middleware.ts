@@ -10,35 +10,24 @@ type AuthPayload = {
     exp?: number;
 };
 
-declare global {
-    namespace Express {
-        interface Request {
-            user?: {
-                id: string;
-                email: string;
-            };
-        }
-    }
-}
-
 export function authMiddleware(
     req: Request,
     _res: Response,
     next: NextFunction
 ): void {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-        throw new AppError("Authorization header is required", 401);
-    }
-
-    const [scheme, token] = authHeader.split(" ");
-
-    if (scheme !== "Bearer" || !token) {
-        throw new AppError("Invalid authorization format", 401);
-    }
-
     try {
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader) {
+            return next(new AppError("Authorization header is required", 401));
+        }
+
+        const [scheme, token] = authHeader.split(" ");
+
+        if (scheme !== "Bearer" || !token) {
+            return next(new AppError("Invalid authorization format", 401));
+        }
+
         const payload = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
 
         req.user = {
@@ -48,6 +37,6 @@ export function authMiddleware(
 
         next();
     } catch {
-        throw new AppError("Invalid or expired token", 401);
+        next(new AppError("Invalid or expired token", 401));
     }
 }

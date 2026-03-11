@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import authRoutes from "./modules/auth/auth.routes.js";
 import { errorHandler } from "./middlewares/error-handler.js";
+import documentsRoutes from "./modules/documents/documents.routes.js";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/documents", documentsRoutes);
 
 app.use(errorHandler);
 

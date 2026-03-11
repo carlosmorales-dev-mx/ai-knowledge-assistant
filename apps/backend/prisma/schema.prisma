@@ -23,12 +23,15 @@ model User {
 model Document {
   id           String          @id @default(cuid())
   userId       String
-  title        String
+  filename     String
   originalName String
   storagePath  String
   mimeType     String
   fileSize     Int
   status       DocumentStatus  @default(UPLOADED)
+  errorMessage String?
+  chunkCount   Int             @default(0)
+  processedAt  DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -37,6 +40,7 @@ model Document {
 
   @@index([userId])
   @@index([status])
+  @@index([userId, createdAt])
   @@map("documents")
 }
 
@@ -45,11 +49,13 @@ model DocumentChunk {
   documentId String
   chunkIndex Int
   content    String
+  vectorId   String?
   createdAt  DateTime  @default(now())
 
   document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+  @@index([documentId, chunkIndex])
   @@unique([documentId, chunkIndex])
   @@map("document_chunks")
 }
