@@ -3,6 +3,9 @@ import { documentsRepository } from "./documents.repository.js";
 import { documentStorageService } from "./document-storage.service.js";
 import { pdfParserService } from "./pdf-parser.service.js";
 import { textChunkerService } from "./text-chunker.service.js";
+import { documentEmbeddingsService } from "./document-embeddings.service.js";
+import { documentVectorStoreService } from "./document-vector-store.service.js";
+import { buildChunkVectorId } from "./documents-vector.utils.js";
 
 export class DocumentProcessingService {
     async process(documentId: string): Promise<void> {
@@ -13,7 +16,10 @@ export class DocumentProcessingService {
                 errorMessage: null,
             });
 
-            const document = await documentsRepository.findStoragePathById(documentId);
+            const document =
+                await documentsRepository.findDocumentForProcessingById(
+                    documentId
+                );
 
             if (!document) {
                 throw new Error("Document not found during processing");
@@ -34,6 +40,35 @@ export class DocumentProcessingService {
                     content: chunk.content,
                 })),
             });
+
+            if (chunks.length > 0) {
+                const embeddings =
+                    await documentEmbeddingsService.generateEmbeddings(
+                        chunks.map((chunk) => chunk.content)
+                    );
+
+                await documentVectorStoreService.upsertDocumentChunks({
+                    chunks: chunks.map((chunk, index) => {
+                        const vectorId = buildChunkVectorId(
+                            documentId,
+                            chunk.index
+                        );
+
+                        return {
+                            id: vectorId,
+                            content: chunk.content,
+                            embedding: embeddings[index],
+                            metadata: {
+                                userId: document.userId,
+                                documentId,
+                                chunkId: vectorId,
+                                chunkIndex: chunk.index,
+                                filename: document.filename,
+                            },
+                        };
+                    }),
+                });
+            }
 
             await documentsRepository.updateStatus({
                 documentId,

@@ -49,6 +49,31 @@ export class DocumentsController {
         }
     };
 
+    getDocumentChunks = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            if (!req.user) {
+                throw new AppError("Unauthorized", 401);
+            }
+
+            const parsedParams = documentIdParamsSchema.parse(req.params);
+
+            const result = await documentsService.getUserDocumentChunksById(
+                parsedParams.id,
+                req.user.id
+            );
+
+            res.status(200).json({
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
     uploadDocument = async (
         req: Request,
         res: Response,

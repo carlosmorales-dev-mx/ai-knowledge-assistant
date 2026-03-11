@@ -35,6 +35,39 @@ export class DocumentsService {
         return document;
     }
 
+    async getUserDocumentChunksById(documentId: string, userId: string) {
+        const documentWithChunks =
+            await documentsRepository.findDocumentWithChunksByIdAndUserId(
+                documentId,
+                userId
+            );
+
+        if (!documentWithChunks) {
+            throw new AppError("Document not found", 404);
+        }
+
+        return {
+            document: {
+                id: documentWithChunks.id,
+                filename: documentWithChunks.filename,
+                originalName: documentWithChunks.originalName,
+                status: documentWithChunks.status,
+                chunkCount: documentWithChunks.chunkCount,
+                processedAt: documentWithChunks.processedAt,
+                createdAt: documentWithChunks.createdAt,
+                updatedAt: documentWithChunks.updatedAt,
+            },
+            chunks: documentWithChunks.chunks.map((chunk) => ({
+                id: chunk.id,
+                chunkIndex: chunk.chunkIndex,
+                content: chunk.content,
+                length: chunk.content.length,
+                vectorId: chunk.vectorId,
+                createdAt: chunk.createdAt,
+            })),
+        };
+    }
+
     async createDocumentUpload(input: {
         userId: string;
         file: Express.Multer.File | undefined;

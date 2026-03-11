@@ -19,6 +19,13 @@ const envSchema = z.object({
     SUPABASE_STORAGE_BUCKET: z
         .string()
         .min(1, "SUPABASE_STORAGE_BUCKET is required"),
+
+    GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+
+    CHROMA_URL: z.string().url("CHROMA_URL must be a valid URL"),
+    CHROMA_COLLECTION_NAME: z
+        .string()
+        .min(1, "CHROMA_COLLECTION_NAME is required"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

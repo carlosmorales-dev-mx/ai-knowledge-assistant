@@ -6,6 +6,7 @@ import { documentsController } from "./documents.controller.js";
 const router = Router();
 
 router.get("/", authMiddleware, documentsController.getDocuments);
+router.get("/:id/chunks", authMiddleware, documentsController.getDocumentChunks);
 router.get("/:id", authMiddleware, documentsController.getDocumentById);
 router.post(
     "/upload",

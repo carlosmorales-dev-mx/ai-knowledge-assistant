@@ -47,6 +47,40 @@ export class DocumentsRepository {
         });
     }
 
+    async findDocumentWithChunksByIdAndUserId(
+        documentId: string,
+        userId: string
+    ) {
+        return prisma.document.findFirst({
+            where: {
+                id: documentId,
+                userId,
+            },
+            select: {
+                id: true,
+                filename: true,
+                originalName: true,
+                status: true,
+                chunkCount: true,
+                processedAt: true,
+                createdAt: true,
+                updatedAt: true,
+                chunks: {
+                    select: {
+                        id: true,
+                        chunkIndex: true,
+                        content: true,
+                        vectorId: true,
+                        createdAt: true,
+                    },
+                    orderBy: {
+                        chunkIndex: "asc",
+                    },
+                },
+            },
+        });
+    }
+
     async create(data: {
         id: string;
         userId: string;
@@ -139,13 +173,15 @@ export class DocumentsRepository {
         });
     }
 
-    async findStoragePathById(documentId: string) {
+    async findDocumentForProcessingById(documentId: string) {
         return prisma.document.findUnique({
             where: {
                 id: documentId,
             },
             select: {
                 id: true,
+                userId: true,
+                filename: true,
                 storagePath: true,
                 status: true,
             },
