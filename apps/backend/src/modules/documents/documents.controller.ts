@@ -1,6 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../../shared/errors/app-error.js";
-import { documentIdParamsSchema } from "./documents.schemas.js";
+import {
+    documentIdParamsSchema,
+    documentSearchSchema,
+} from "./documents.schemas.js";
 import { documentsService } from "./documents.service.js";
 
 export class DocumentsController {
@@ -68,6 +71,35 @@ export class DocumentsController {
 
             res.status(200).json({
                 data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    searchDocumentChunks = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            if (!req.user) {
+                throw new AppError("Unauthorized", 401);
+            }
+
+            const parsedBody = documentSearchSchema.parse(req.body);
+
+            const results = await documentsService.searchUserDocumentChunks({
+                query: parsedBody.query,
+                userId: req.user.id,
+                limit: parsedBody.limit,
+            });
+
+            res.status(200).json({
+                data: {
+                    query: parsedBody.query,
+                    results,
+                },
             });
         } catch (error) {
             next(error);

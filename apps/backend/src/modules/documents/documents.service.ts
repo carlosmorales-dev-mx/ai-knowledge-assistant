@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { AppError } from "../../shared/errors/app-error.js";
 import { documentProcessingService } from "./document-processing.service.js";
 import { documentStorageService } from "./document-storage.service.js";
+import { documentEmbeddingsService } from "./document-embeddings.service.js";
+import { documentVectorStoreService } from "./document-vector-store.service.js";
 import { documentsRepository } from "./documents.repository.js";
 
 function sanitizeFilename(originalName: string): string {
@@ -66,6 +68,34 @@ export class DocumentsService {
                 createdAt: chunk.createdAt,
             })),
         };
+    }
+
+    async searchUserDocumentChunks(input: {
+        query: string;
+        userId: string;
+        limit?: number;
+    }) {
+        const { query, userId, limit } = input;
+
+        const embedding = await documentEmbeddingsService.generateEmbedding(query);
+
+        const result = await documentVectorStoreService.querySimilarChunks({
+            embedding,
+            userId,
+            limit,
+        });
+
+        const ids = result.ids?.[0] ?? [];
+        const documents = result.documents?.[0] ?? [];
+        const metadatas = result.metadatas?.[0] ?? [];
+        const distances = result.distances?.[0] ?? [];
+
+        return ids.map((id, index) => ({
+            id,
+            content: documents[index] ?? null,
+            metadata: metadatas[index] ?? null,
+            distance: distances[index] ?? null,
+        }));
     }
 
     async createDocumentUpload(input: {

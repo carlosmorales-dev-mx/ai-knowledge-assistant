@@ -92,6 +92,31 @@ export class DocumentVectorStoreService {
         }
     }
 
+    async querySimilarChunks(input: {
+        embedding: number[];
+        userId: string;
+        limit?: number;
+    }) {
+        const collection = await this.getCollection();
+        const limit = input.limit ?? 5;
+
+        try {
+            const result = await collection.query({
+                queryEmbeddings: [input.embedding],
+                nResults: limit,
+                where: {
+                    userId: input.userId,
+                },
+            });
+
+            return result;
+        } catch (error) {
+            throw new AppError("Failed to query similar chunks", 502, {
+                cause: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
+    }
+
     async listStoredChunks(limit = 10) {
         const collection = await this.getCollection();
 
