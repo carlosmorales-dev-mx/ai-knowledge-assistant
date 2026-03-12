@@ -19,24 +19,39 @@ export class DocumentEmbeddingsService {
             throw new AppError("Cannot generate embedding for empty text", 400);
         }
 
-        try {
-            const response = await this.client.models.embedContent({
-                model: this.model,
-                contents: normalizedText,
-            });
+        const maxRetries = 3;
 
-            const values = response.embeddings?.[0]?.values;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await this.client.models.embedContent({
+                    model: this.model,
+                    contents: normalizedText,
+                });
 
-            if (!values || values.length === 0) {
-                throw new AppError("Embedding response was empty", 502);
+                const values = response.embeddings?.[0]?.values;
+
+                if (!values || values.length === 0) {
+                    throw new AppError("Embedding response was empty", 502);
+                }
+
+                return values;
+
+            } catch (error) {
+
+                if (attempt === maxRetries) {
+                    throw new AppError("Failed to generate embedding", 502, {
+                        cause: error instanceof Error ? error.message : "Unknown error",
+                    });
+                }
+
+                // exponential backoff
+                const delay = attempt * 1500;
+
+                await new Promise((resolve) => setTimeout(resolve, delay));
             }
-
-            return values;
-        } catch (error) {
-            throw new AppError("Failed to generate embedding", 502, {
-                cause: error instanceof Error ? error.message : "Unknown error",
-            });
         }
+
+        throw new AppError("Embedding generation failed", 502);
     }
 
     async generateEmbeddings(texts: string[]): Promise<number[][]> {
@@ -53,6 +68,9 @@ export class DocumentEmbeddingsService {
         for (const text of normalizedTexts) {
             const embedding = await this.generateEmbedding(text);
             embeddings.push(embedding);
+
+            // small delay to avoid rate limits
+            await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
         return embeddings;
