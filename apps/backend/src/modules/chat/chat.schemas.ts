@@ -9,3 +9,8 @@ export const chatMessageSchema = z.object({
 export const chatSessionParamsSchema = z.object({
     id: z.string().trim().min(1, "Session id is required"),
 });
+
+export const chatMessagesQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});

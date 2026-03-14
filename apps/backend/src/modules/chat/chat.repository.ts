@@ -1,4 +1,4 @@
-import { PrismaClient, MessageRole } from '@prisma/client';
+import { MessageRole, PrismaClient } from "@prisma/client";
 
 export class ChatRepository {
     constructor(private readonly prisma: PrismaClient) { }
@@ -34,13 +34,31 @@ export class ChatRepository {
         });
     }
 
+    async updateSessionTitle(sessionId: string, title: string) {
+        return this.prisma.chatSession.update({
+            where: {
+                id: sessionId,
+            },
+            data: {
+                title,
+            },
+            select: {
+                id: true,
+                userId: true,
+                title: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    }
+
     async listUserSessions(userId: string) {
         return this.prisma.chatSession.findMany({
             where: {
                 userId,
             },
             orderBy: {
-                updatedAt: 'desc',
+                updatedAt: "desc",
             },
             select: {
                 id: true,
@@ -78,7 +96,7 @@ export class ChatRepository {
                 chatSessionId: sessionId,
             },
             orderBy: {
-                createdAt: 'asc',
+                createdAt: "asc",
             },
             select: {
                 id: true,
@@ -95,7 +113,7 @@ export class ChatRepository {
                 chatSessionId: sessionId,
             },
             orderBy: {
-                createdAt: 'desc',
+                createdAt: "desc",
             },
             take: limit,
             select: {
@@ -109,29 +127,49 @@ export class ChatRepository {
         return messages.reverse();
     }
 
+    async listSessionMessagesPaginated(
+        sessionId: string,
+        page: number,
+        pageSize: number,
+    ) {
+        const skip = (page - 1) * pageSize;
+
+        const [messages, total] = await Promise.all([
+            this.prisma.chatMessage.findMany({
+                where: {
+                    chatSessionId: sessionId,
+                },
+                orderBy: {
+                    createdAt: "asc",
+                },
+                skip,
+                take: pageSize,
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    createdAt: true,
+                },
+            }),
+            this.prisma.chatMessage.count({
+                where: {
+                    chatSessionId: sessionId,
+                },
+            }),
+        ]);
+
+        return {
+            messages,
+            total,
+        };
+    }
+
     async touchSession(sessionId: string) {
         return this.prisma.chatSession.update({
             where: {
                 id: sessionId,
             },
             data: {},
-            select: {
-                id: true,
-                userId: true,
-                title: true,
-                createdAt: true,
-                updatedAt: true,
-            },
-        });
-    }
-    async updateSessionTitle(sessionId: string, title: string) {
-        return this.prisma.chatSession.update({
-            where: {
-                id: sessionId,
-            },
-            data: {
-                title,
-            },
             select: {
                 id: true,
                 userId: true,

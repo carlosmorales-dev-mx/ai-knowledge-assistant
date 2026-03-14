@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../../shared/errors/app-error.js";
 import {
     chatMessageSchema,
+    chatMessagesQuerySchema,
     chatSessionParamsSchema,
 } from "./chat.schemas.js";
 import { chatService } from "./chat.service.js";
@@ -57,14 +58,23 @@ export class ChatController {
             }
 
             const params = chatSessionParamsSchema.parse(req.params);
+            const query = chatMessagesQuerySchema.parse(req.query);
 
-            const messages = await chatService.getSessionMessages(
+            const result = await chatService.getSessionMessages(
                 req.user.id,
                 params.id,
+                query.page,
+                query.pageSize,
             );
 
             return res.status(200).json({
-                data: messages,
+                data: result.messages,
+                pagination: {
+                    page: query.page,
+                    pageSize: query.pageSize,
+                    total: result.total,
+                    totalPages: Math.ceil(result.total / query.pageSize),
+                },
             });
         } catch (error) {
             next(error);

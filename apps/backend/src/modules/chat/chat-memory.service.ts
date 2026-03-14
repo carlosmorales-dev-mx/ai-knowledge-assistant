@@ -1,13 +1,13 @@
-import { MessageRole } from '@prisma/client';
-import { ChatRepository } from './chat.repository.js';
-import { prisma } from '../../lib/prisma.js';
+import { MessageRole } from "@prisma/client";
+import { ChatRepository } from "./chat.repository.js";
+import { prisma } from "../../lib/prisma.js";
 
 class NotFoundError extends Error {
     public readonly statusCode: number;
 
-    constructor(message = 'Resource not found') {
+    constructor(message = "Resource not found") {
         super(message);
-        this.name = 'NotFoundError';
+        this.name = "NotFoundError";
         this.statusCode = 404;
     }
 }
@@ -25,7 +25,7 @@ export class ChatMemoryService {
         const session = await this.repository.findUserSessionById(userId, sessionId);
 
         if (!session) {
-            throw new NotFoundError('Chat session not found');
+            throw new NotFoundError("Chat session not found");
         }
 
         return session;
@@ -37,6 +37,10 @@ export class ChatMemoryService {
         }
 
         return this.getUserSessionOrThrow(userId, sessionId);
+    }
+
+    async updateSessionTitle(sessionId: string, title: string) {
+        return this.repository.updateSessionTitle(sessionId, title);
     }
 
     async createUserMessage(sessionId: string, content: string) {
@@ -59,17 +63,23 @@ export class ChatMemoryService {
         return this.repository.listUserSessions(userId);
     }
 
-    async getSessionMessages(userId: string, sessionId: string) {
+    async getSessionMessages(
+        userId: string,
+        sessionId: string,
+        page: number,
+        pageSize: number,
+    ) {
         await this.getUserSessionOrThrow(userId, sessionId);
-        return this.repository.listSessionMessages(sessionId);
+
+        return this.repository.listSessionMessagesPaginated(
+            sessionId,
+            page,
+            pageSize,
+        );
     }
 
     async touchSession(sessionId: string) {
         return this.repository.touchSession(sessionId);
-    }
-
-    async updateSessionTitle(sessionId: string, title: string) {
-        return this.repository.updateSessionTitle(sessionId, title);
     }
 }
 

@@ -42,6 +42,10 @@ type RecentMessage = {
 };
 
 export class ChatService {
+    private readonly DISTANCE_THRESHOLD = 0.8;
+    private readonly MAX_CONTEXT_CHARS = 4000;
+    private readonly RECENT_MESSAGES_LIMIT = 6;
+
     async ask(input: AskInput) {
         const { userId, message, sessionId, limit = 5 } = input;
         const isNewSession = !sessionId;
@@ -52,7 +56,12 @@ export class ChatService {
         const session = await chatMemoryService.resolveSession(userId, sessionId);
 
         /**
-         * 2) Auto-title only when session is newly created
+         * 2) Persist user message first
+         */
+        await chatMemoryService.createUserMessage(session.id, message);
+
+        /**
+         * 3) Auto-title only when session is newly created
          */
         if (isNewSession) {
             const generatedTitle = this.generateSessionTitle(message);
@@ -60,16 +69,11 @@ export class ChatService {
         }
 
         /**
-         * 3) Persist user message first
-         */
-        await chatMemoryService.createUserMessage(session.id, message);
-
-        /**
          * 4) Load recent conversation memory
          */
         const recentMessages = await chatMemoryService.getRecentMessages(
             session.id,
-            6,
+            this.RECENT_MESSAGES_LIMIT,
         );
 
         const conversationHistory =
@@ -135,13 +139,11 @@ export class ChatService {
         /**
          * 9) Intelligent context packing
          */
-        const DISTANCE_THRESHOLD = 0.8;
-        const MAX_CONTEXT_CHARS = 4000;
-
         const filteredResults = validResults
             .filter(
                 (result) =>
-                    result.distance !== null && result.distance < DISTANCE_THRESHOLD,
+                    result.distance !== null &&
+                    result.distance < this.DISTANCE_THRESHOLD,
             )
             .sort((a, b) => (a.distance ?? 1) - (b.distance ?? 1));
 
@@ -167,7 +169,7 @@ export class ChatService {
                 "",
             ].join("\n");
 
-            if (packedContextLength + sourceBlock.length > MAX_CONTEXT_CHARS) {
+            if (packedContextLength + sourceBlock.length > this.MAX_CONTEXT_CHARS) {
                 break;
             }
 
@@ -189,7 +191,7 @@ export class ChatService {
                 sessionId: session.id,
                 answer: null,
                 fallback,
-                sources: [],
+                sources: [] as ChatSource[],
             };
         }
 
@@ -240,8 +242,18 @@ export class ChatService {
         return chatMemoryService.getUserSessions(userId);
     }
 
-    async getSessionMessages(userId: string, sessionId: string) {
-        return chatMemoryService.getSessionMessages(userId, sessionId);
+    async getSessionMessages(
+        userId: string,
+        sessionId: string,
+        page: number,
+        pageSize: number,
+    ) {
+        return chatMemoryService.getSessionMessages(
+            userId,
+            sessionId,
+            page,
+            pageSize,
+        );
     }
 
     private buildRetrievalQuery(input: {
@@ -286,7 +298,7 @@ export class ChatService {
     private isFollowUpMessage(message: string) {
         const normalized = message.trim().toLowerCase();
 
-        if (normalized.length <= 30) {
+        if (normalized.length <= 20) {
             return true;
         }
 
