@@ -17,9 +17,7 @@ export class DocumentProcessingService {
             });
 
             const document =
-                await documentsRepository.findDocumentForProcessingById(
-                    documentId
-                );
+                await documentsRepository.findDocumentForProcessingById(documentId);
 
             if (!document) {
                 throw new Error("Document not found during processing");
@@ -33,7 +31,7 @@ export class DocumentProcessingService {
 
             const chunks = textChunkerService.chunk(extractedText);
 
-            await documentsRepository.replaceChunks({
+            const persistedChunks = await documentsRepository.replaceChunks({
                 documentId,
                 chunks: chunks.map((chunk) => ({
                     chunkIndex: chunk.index,
@@ -41,18 +39,14 @@ export class DocumentProcessingService {
                 })),
             });
 
-            if (chunks.length > 0) {
-                const embeddings =
-                    await documentEmbeddingsService.generateEmbeddings(
-                        chunks.map((chunk) => chunk.content)
-                    );
+            if (persistedChunks.length > 0) {
+                const embeddings = await documentEmbeddingsService.generateEmbeddings(
+                    persistedChunks.map((chunk) => chunk.content)
+                );
 
                 await documentVectorStoreService.upsertDocumentChunks({
-                    chunks: chunks.map((chunk, index) => {
-                        const vectorId = buildChunkVectorId(
-                            documentId,
-                            chunk.index
-                        );
+                    chunks: persistedChunks.map((chunk, index) => {
+                        const vectorId = buildChunkVectorId(documentId, chunk.chunkIndex);
 
                         return {
                             id: vectorId,
@@ -61,13 +55,20 @@ export class DocumentProcessingService {
                             metadata: {
                                 userId: document.userId,
                                 documentId,
-                                chunkId: vectorId,
-                                chunkIndex: chunk.index,
+                                chunkId: chunk.id,
+                                chunkIndex: chunk.chunkIndex,
                                 filename: document.filename,
                             },
                         };
                     }),
                 });
+
+                await documentsRepository.updateChunkVectorIds(
+                    persistedChunks.map((chunk) => ({
+                        id: chunk.id,
+                        vectorId: buildChunkVectorId(documentId, chunk.chunkIndex),
+                    }))
+                );
             }
 
             await documentsRepository.updateStatus({

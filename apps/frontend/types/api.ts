@@ -1,0 +1,18 @@
+export type ApiErrorResponse = {
+    success?: false;
+    message?: string;
+    error?: string;
+    details?: unknown;
+};
+
+export class ApiClientError extends Error {
+    status: number;
+    details?: unknown;
+
+    constructor(message: string, status: number, details?: unknown) {
+        super(message);
+        this.name = "ApiClientError";
+        this.status = status;
+        this.details = details;
+    }
+}

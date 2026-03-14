@@ -47,10 +47,7 @@ export class DocumentsRepository {
         });
     }
 
-    async findDocumentWithChunksByIdAndUserId(
-        documentId: string,
-        userId: string
-    ) {
+    async findDocumentWithChunksByIdAndUserId(documentId: string, userId: string) {
         return prisma.document.findFirst({
             where: {
                 id: documentId,
@@ -161,16 +158,60 @@ export class DocumentsRepository {
                 },
             });
 
-            if (chunks.length > 0) {
-                await tx.documentChunk.createMany({
-                    data: chunks.map((chunk) => ({
+            if (chunks.length === 0) {
+                return [];
+            }
+
+            for (const chunk of chunks) {
+                await tx.documentChunk.create({
+                    data: {
                         documentId,
                         chunkIndex: chunk.chunkIndex,
                         content: chunk.content,
-                    })),
+                    },
                 });
             }
+
+            return tx.documentChunk.findMany({
+                where: {
+                    documentId,
+                },
+                select: {
+                    id: true,
+                    chunkIndex: true,
+                    content: true,
+                    vectorId: true,
+                    createdAt: true,
+                },
+                orderBy: {
+                    chunkIndex: "asc",
+                },
+            });
         });
+    }
+
+    async updateChunkVectorIds(
+        chunks: Array<{
+            id: string;
+            vectorId: string;
+        }>
+    ) {
+        if (chunks.length === 0) {
+            return;
+        }
+
+        return prisma.$transaction(
+            chunks.map((chunk) =>
+                prisma.documentChunk.update({
+                    where: {
+                        id: chunk.id,
+                    },
+                    data: {
+                        vectorId: chunk.vectorId,
+                    },
+                })
+            )
+        );
     }
 
     async findDocumentForProcessingById(documentId: string) {
