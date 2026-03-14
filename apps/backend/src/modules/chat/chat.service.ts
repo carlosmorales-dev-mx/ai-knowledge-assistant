@@ -1,3 +1,4 @@
+import { MessageRole } from "@prisma/client";
 import { documentEmbeddingsService } from "../documents/document-embeddings.service.js";
 import { documentVectorStoreService } from "../documents/document-vector-store.service.js";
 import { chatContextService } from "./chat-context.service.js";
@@ -33,14 +34,19 @@ type AskInput = {
     limit?: number;
 };
 
+type RecentMessage = {
+    id: string;
+    role: MessageRole;
+    content: string;
+    createdAt: Date;
+};
+
 export class ChatService {
     async ask(input: AskInput) {
         const { userId, message, sessionId, limit = 5 } = input;
 
         /**
          * 1) Resolve session
-         *    - create new if sessionId is not provided
-         *    - validate ownership if sessionId exists
          */
         const session = await chatMemoryService.resolveSession(userId, sessionId);
 
@@ -61,13 +67,21 @@ export class ChatService {
             chatContextService.buildConversationHistory(recentMessages);
 
         /**
-         * 4) Generate embedding for current user message
+         * 4) Build a better retrieval query for follow-up questions
          */
-        const queryEmbedding =
-            await documentEmbeddingsService.generateEmbedding(message);
+        const retrievalQuery = this.buildRetrievalQuery({
+            message,
+            recentMessages,
+        });
 
         /**
-         * 5) Retrieve relevant chunks from vector store
+         * 5) Generate embedding for retrieval query
+         */
+        const queryEmbedding =
+            await documentEmbeddingsService.generateEmbedding(retrievalQuery);
+
+        /**
+         * 6) Retrieve relevant chunks from vector store
          */
         const retrievalResult =
             await documentVectorStoreService.querySimilarChunks({
@@ -93,7 +107,7 @@ export class ChatService {
         );
 
         /**
-         * 6) Fallback if no valid results were retrieved
+         * 7) Fallback if no valid results were retrieved
          */
         if (validResults.length === 0) {
             const fallback = "No relevant document context found for this user.";
@@ -110,13 +124,16 @@ export class ChatService {
         }
 
         /**
-         * 7) Intelligent context packing
+         * 8) Intelligent context packing
          */
         const DISTANCE_THRESHOLD = 0.8;
         const MAX_CONTEXT_CHARS = 4000;
 
         const filteredResults = validResults
-            .filter((result) => result.distance !== null && result.distance < DISTANCE_THRESHOLD)
+            .filter(
+                (result) =>
+                    result.distance !== null && result.distance < DISTANCE_THRESHOLD,
+            )
             .sort((a, b) => (a.distance ?? 1) - (b.distance ?? 1));
 
         const packedSources: ChatSource[] = [];
@@ -150,7 +167,7 @@ export class ChatService {
         }
 
         /**
-         * 8) Fallback if similarity filtering removed everything
+         * 9) Fallback if similarity filtering removed everything
          */
         if (packedSources.length === 0) {
             const fallback =
@@ -163,15 +180,12 @@ export class ChatService {
                 sessionId: session.id,
                 answer: null,
                 fallback,
-                sources: [] as ChatSource[],
+                sources: [],
             };
         }
 
         /**
-         * 9) Build final prompt with:
-         *    - recent conversation history
-         *    - retrieved document context
-         *    - current user question
+         * 10) Build final prompt with conversation history + retrieved context
          */
         const retrievedContext =
             chatContextService.buildSourcesContext(packedSources);
@@ -183,7 +197,7 @@ export class ChatService {
         });
 
         /**
-         * 10) Generate answer using LLM
+         * 11) Generate answer using LLM
          */
         try {
             const answer = await chatLlmService.generateAnswer(finalPrompt);
@@ -198,9 +212,6 @@ export class ChatService {
                 sources: packedSources,
             };
         } catch (_error) {
-            /**
-             * 11) Graceful fallback if LLM fails
-             */
             const fallback =
                 "LLM quota exceeded or generation failed. Returning retrieved sources only.";
 
@@ -222,6 +233,79 @@ export class ChatService {
 
     async getSessionMessages(userId: string, sessionId: string) {
         return chatMemoryService.getSessionMessages(userId, sessionId);
+    }
+
+    private buildRetrievalQuery(input: {
+        message: string;
+        recentMessages: RecentMessage[];
+    }) {
+        const { message, recentMessages } = input;
+
+        if (!this.isFollowUpMessage(message)) {
+            return message;
+        }
+
+        const previousUserMessage = this.findPreviousUserMessage(
+            recentMessages,
+            message,
+        );
+
+        if (!previousUserMessage) {
+            return message;
+        }
+
+        return `${previousUserMessage.content}\n\nFollow-up request: ${message}`;
+    }
+
+    private findPreviousUserMessage(
+        messages: RecentMessage[],
+        currentMessage: string,
+    ) {
+        const userMessages = messages.filter(
+            (message) =>
+                message.role === MessageRole.USER &&
+                message.content.trim() !== currentMessage.trim(),
+        );
+
+        if (!userMessages.length) {
+            return null;
+        }
+
+        return userMessages[userMessages.length - 1] ?? null;
+    }
+
+    private isFollowUpMessage(message: string) {
+        const normalized = message.trim().toLowerCase();
+
+        if (normalized.length <= 30) {
+            return true;
+        }
+
+        const followUpPatterns = [
+            "explícamelo",
+            "explicamelo",
+            "más simple",
+            "mas simple",
+            "resúmelo",
+            "resumelo",
+            "resume",
+            "amplía",
+            "amplia",
+            "dime más",
+            "dime mas",
+            "qué significa",
+            "que significa",
+            "cómo así",
+            "como asi",
+            "por qué",
+            "porque",
+            "why",
+            "explain it simply",
+            "summarize it",
+            "tell me more",
+        ];
+
+        return followUpPatterns.some((pattern) => normalized.includes(pattern));
     }
 }
 
