@@ -67,6 +67,10 @@ export class ChatMemoryService {
     async touchSession(sessionId: string) {
         return this.repository.touchSession(sessionId);
     }
+
+    async updateSessionTitle(sessionId: string, title: string) {
+        return this.repository.updateSessionTitle(sessionId, title);
+    }
 }
 
 export const chatMemoryService = new ChatMemoryService(chatRepository);

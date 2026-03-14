@@ -44,6 +44,7 @@ type RecentMessage = {
 export class ChatService {
     async ask(input: AskInput) {
         const { userId, message, sessionId, limit = 5 } = input;
+        const isNewSession = !sessionId;
 
         /**
          * 1) Resolve session
@@ -51,12 +52,20 @@ export class ChatService {
         const session = await chatMemoryService.resolveSession(userId, sessionId);
 
         /**
-         * 2) Persist user message first
+         * 2) Auto-title only when session is newly created
+         */
+        if (isNewSession) {
+            const generatedTitle = this.generateSessionTitle(message);
+            await chatMemoryService.updateSessionTitle(session.id, generatedTitle);
+        }
+
+        /**
+         * 3) Persist user message first
          */
         await chatMemoryService.createUserMessage(session.id, message);
 
         /**
-         * 3) Load recent conversation memory
+         * 4) Load recent conversation memory
          */
         const recentMessages = await chatMemoryService.getRecentMessages(
             session.id,
@@ -67,7 +76,7 @@ export class ChatService {
             chatContextService.buildConversationHistory(recentMessages);
 
         /**
-         * 4) Build a better retrieval query for follow-up questions
+         * 5) Build better retrieval query for follow-up questions
          */
         const retrievalQuery = this.buildRetrievalQuery({
             message,
@@ -75,13 +84,13 @@ export class ChatService {
         });
 
         /**
-         * 5) Generate embedding for retrieval query
+         * 6) Generate embedding for retrieval query
          */
         const queryEmbedding =
             await documentEmbeddingsService.generateEmbedding(retrievalQuery);
 
         /**
-         * 6) Retrieve relevant chunks from vector store
+         * 7) Retrieve relevant chunks from vector store
          */
         const retrievalResult =
             await documentVectorStoreService.querySimilarChunks({
@@ -107,7 +116,7 @@ export class ChatService {
         );
 
         /**
-         * 7) Fallback if no valid results were retrieved
+         * 8) Fallback if no valid results were retrieved
          */
         if (validResults.length === 0) {
             const fallback = "No relevant document context found for this user.";
@@ -124,7 +133,7 @@ export class ChatService {
         }
 
         /**
-         * 8) Intelligent context packing
+         * 9) Intelligent context packing
          */
         const DISTANCE_THRESHOLD = 0.8;
         const MAX_CONTEXT_CHARS = 4000;
@@ -167,7 +176,7 @@ export class ChatService {
         }
 
         /**
-         * 9) Fallback if similarity filtering removed everything
+         * 10) Fallback if similarity filtering removed everything
          */
         if (packedSources.length === 0) {
             const fallback =
@@ -185,7 +194,7 @@ export class ChatService {
         }
 
         /**
-         * 10) Build final prompt with conversation history + retrieved context
+         * 11) Build final prompt with conversation history + retrieved context
          */
         const retrievedContext =
             chatContextService.buildSourcesContext(packedSources);
@@ -197,7 +206,7 @@ export class ChatService {
         });
 
         /**
-         * 11) Generate answer using LLM
+         * 12) Generate answer using LLM
          */
         try {
             const answer = await chatLlmService.generateAnswer(finalPrompt);
@@ -262,9 +271,9 @@ export class ChatService {
         currentMessage: string,
     ) {
         const userMessages = messages.filter(
-            (message) =>
-                message.role === MessageRole.USER &&
-                message.content.trim() !== currentMessage.trim(),
+            (messageItem) =>
+                messageItem.role === MessageRole.USER &&
+                messageItem.content.trim() !== currentMessage.trim(),
         );
 
         if (!userMessages.length) {
@@ -306,6 +315,26 @@ export class ChatService {
         ];
 
         return followUpPatterns.some((pattern) => normalized.includes(pattern));
+    }
+
+    private generateSessionTitle(message: string) {
+        const normalized = message
+            .replace(/\s+/g, " ")
+            .replace(/^[¿?¡!.\-_:;,]+/, "")
+            .replace(/[¿?¡!.\-_:;,]+$/, "")
+            .trim();
+
+        if (!normalized) {
+            return "New chat";
+        }
+
+        const maxLength = 60;
+
+        if (normalized.length <= maxLength) {
+            return normalized;
+        }
+
+        return `${normalized.slice(0, maxLength).trimEnd()}...`;
     }
 }
 

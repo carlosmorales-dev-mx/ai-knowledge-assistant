@@ -124,4 +124,21 @@ export class ChatRepository {
             },
         });
     }
+    async updateSessionTitle(sessionId: string, title: string) {
+        return this.prisma.chatSession.update({
+            where: {
+                id: sessionId,
+            },
+            data: {
+                title,
+            },
+            select: {
+                id: true,
+                userId: true,
+                title: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    }
 }
