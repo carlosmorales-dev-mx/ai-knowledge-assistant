@@ -2,18 +2,50 @@
 
 import { useDocuments } from "@/features/documents/hooks/use-documents";
 import { useUploadDocument } from "@/features/documents/hooks/use-upload-document";
+import { useDeleteDocument } from "@/features/documents/hooks/use-delete-document";
+import { useToastStore } from "@/stores/toast.store";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import type { Document } from "@/features/documents/types/document.types";
 
 export default function DocumentsPage() {
     const documentsQuery = useDocuments();
     const uploadMutation = useUploadDocument();
+    const deleteDocumentMutation = useDeleteDocument();
+    const addToast = useToastStore((state) => state.addToast);
 
     function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0];
         if (!file) return;
         uploadMutation.mutate(file);
+    }
+
+    async function handleDeleteDocument(documentId: string) {
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this document?"
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await deleteDocumentMutation.mutateAsync(documentId);
+
+            addToast({
+                type: "success",
+                title: "Document deleted",
+                description: "The document was removed from your knowledge base",
+            });
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Failed to delete document";
+
+            addToast({
+                type: "error",
+                title: "Delete failed",
+                description: message,
+            });
+        }
     }
 
     return (
@@ -69,7 +101,7 @@ export default function DocumentsPage() {
                     </Card>
                 )}
 
-                {documentsQuery.data?.data?.map((doc: any) => (
+                {documentsQuery.data?.data?.map((doc: Document) => (
                     <Card key={doc.id} className="p-6 transition hover:shadow-md">
                         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
@@ -81,7 +113,16 @@ export default function DocumentsPage() {
                                 </p>
                             </div>
 
-                            <StatusBadge status={doc.status} />
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={doc.status} />
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteDocument(doc.id)}
+                                    className="rounded-xl border border-ai-danger/20 px-3 py-2 text-sm font-medium text-ai-danger transition hover:bg-ai-danger/5"
+                                >
+                                    Delete
+                                </button>
+                            </div>
                         </div>
 
                         <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">

@@ -97,7 +97,20 @@ export class DocumentsService {
             distance: distances[index] ?? null,
         }));
     }
+    async deleteUserDocument(documentId: string, userId: string) {
+        const document = await documentsRepository.findDocumentForDelete(
+            documentId,
+            userId
+        );
 
+        if (!document) {
+            throw new AppError("Document not found", 404);
+        }
+
+        await documentsRepository.deleteByIdAndUserId(documentId, userId);
+
+        return { success: true };
+    }
     async createDocumentUpload(input: {
         userId: string;
         file: Express.Multer.File | undefined;

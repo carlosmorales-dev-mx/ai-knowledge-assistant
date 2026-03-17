@@ -25,3 +25,16 @@ export type GetSessionMessagesResponse = {
         totalPages: number;
     };
 };
+
+export type RenameSessionRequest = {
+    title: string;
+};
+
+export type RenameSessionResponse = {
+    data: ChatSession;
+};
+
+export type DeleteSessionResponse = {
+    success: boolean;
+    message: string;
+};

@@ -17,6 +17,8 @@ router.get("/:id/chunks", authMiddleware, documentsController.getDocumentChunks)
 
 router.get("/:id", authMiddleware, documentsController.getDocumentById);
 
+router.delete("/:id", authMiddleware, documentsController.deleteDocument);
+
 router.post(
     "/upload",
     authMiddleware,

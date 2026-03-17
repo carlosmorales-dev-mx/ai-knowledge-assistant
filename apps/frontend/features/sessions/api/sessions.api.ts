@@ -1,7 +1,10 @@
 import { apiClient, toApiClientError } from "@/lib/api-client";
 import {
+    DeleteSessionResponse,
     GetChatSessionsResponse,
     GetSessionMessagesResponse,
+    RenameSessionRequest,
+    RenameSessionResponse,
 } from "@/features/sessions/types/sessions.types";
 
 export async function getChatSessionsRequest(): Promise<GetChatSessionsResponse> {
@@ -24,6 +27,36 @@ export async function getSessionMessagesRequest(
             {
                 params: { page, pageSize },
             }
+        );
+
+        return response.data;
+    } catch (error) {
+        throw toApiClientError(error);
+    }
+}
+
+export async function renameSessionRequest(
+    sessionId: string,
+    data: RenameSessionRequest
+): Promise<RenameSessionResponse> {
+    try {
+        const response = await apiClient.patch<RenameSessionResponse>(
+            `/chat/sessions/${sessionId}`,
+            data
+        );
+
+        return response.data;
+    } catch (error) {
+        throw toApiClientError(error);
+    }
+}
+
+export async function deleteSessionRequest(
+    sessionId: string
+): Promise<DeleteSessionResponse> {
+    try {
+        const response = await apiClient.delete<DeleteSessionResponse>(
+            `/chat/sessions/${sessionId}`
         );
 
         return response.data;

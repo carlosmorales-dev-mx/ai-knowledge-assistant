@@ -4,6 +4,7 @@ import {
     chatMessageSchema,
     chatMessagesQuerySchema,
     chatSessionParamsSchema,
+    renameChatSessionSchema,
 } from "./chat.schemas.js";
 import { chatService } from "./chat.service.js";
 
@@ -75,6 +76,48 @@ export class ChatController {
                     total: result.total,
                     totalPages: Math.ceil(result.total / query.pageSize),
                 },
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    renameSession = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            if (!req.user) {
+                throw new AppError("Unauthorized", 401);
+            }
+
+            const params = chatSessionParamsSchema.parse(req.params);
+            const body = renameChatSessionSchema.parse(req.body);
+
+            const session = await chatService.renameSession(
+                req.user.id,
+                params.id,
+                body.title,
+            );
+
+            return res.status(200).json({
+                data: session,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    deleteSession = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            if (!req.user) {
+                throw new AppError("Unauthorized", 401);
+            }
+
+            const params = chatSessionParamsSchema.parse(req.params);
+
+            await chatService.deleteSession(req.user.id, params.id);
+
+            return res.status(200).json({
+                success: true,
+                message: "Session deleted successfully",
             });
         } catch (error) {
             next(error);

@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { useChatSessions } from "@/features/sessions/hooks/use-chat-sessions";
 import { useChatSessionStore } from "@/stores/chat-session.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
+import { useRenameSession } from "@/features/sessions/hooks/use-rename-session";
+import { useDeleteSession } from "@/features/sessions/hooks/use-delete-session";
 import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
@@ -17,6 +20,12 @@ export function Sidebar() {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const addToast = useToastStore((state) => state.addToast);
+
+    const renameSessionMutation = useRenameSession();
+    const deleteSessionMutation = useDeleteSession();
+
+    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+    const [draftTitle, setDraftTitle] = useState("");
 
     function handleLogout() {
         logout();
@@ -34,6 +43,81 @@ export function Sidebar() {
     function handleNewChat() {
         setActiveSessionId(undefined);
         router.push("/chat");
+    }
+
+    function startRename(sessionId: string, currentTitle: string | null) {
+        setEditingSessionId(sessionId);
+        setDraftTitle(currentTitle || "");
+    }
+
+    async function submitRename(sessionId: string) {
+        const trimmed = draftTitle.trim();
+
+        if (!trimmed) {
+            addToast({
+                type: "error",
+                title: "Invalid title",
+                description: "Session title cannot be empty",
+            });
+            return;
+        }
+
+        try {
+            await renameSessionMutation.mutateAsync({
+                sessionId,
+                title: trimmed,
+            });
+
+            setEditingSessionId(null);
+            setDraftTitle("");
+
+            addToast({
+                type: "success",
+                title: "Session renamed",
+                description: "The session title was updated",
+            });
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Failed to rename session";
+
+            addToast({
+                type: "error",
+                title: "Rename failed",
+                description: message,
+            });
+        }
+    }
+
+    async function handleDeleteSession(sessionId: string) {
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this chat session?"
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await deleteSessionMutation.mutateAsync(sessionId);
+
+            if (activeSessionId === sessionId) {
+                setActiveSessionId(undefined);
+                router.push("/chat");
+            }
+
+            addToast({
+                type: "success",
+                title: "Session deleted",
+                description: "The chat session was removed",
+            });
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Failed to delete session";
+
+            addToast({
+                type: "error",
+                title: "Delete failed",
+                description: message,
+            });
+        }
     }
 
     return (
@@ -90,23 +174,78 @@ export function Sidebar() {
 
                 {data?.data?.map((session) => {
                     const isActive = activeSessionId === session.id;
+                    const isEditing = editingSessionId === session.id;
 
                     return (
-                        <button
+                        <div
                             key={session.id}
-                            onClick={() => {
-                                setActiveSessionId(session.id);
-                                router.push("/chat");
-                            }}
-                            className={`w-full rounded-2xl border px-4 py-3 text-left transition ${isActive
+                            className={`rounded-2xl border px-4 py-3 transition ${isActive
                                     ? "border-ai-border bg-ai-surface-soft shadow-sm"
                                     : "border-transparent bg-transparent hover:border-ai-border hover:bg-ai-surface-soft/70"
                                 }`}
                         >
-                            <div className="line-clamp-2 text-sm font-medium text-ai-text">
-                                {session.title || "Untitled session"}
-                            </div>
-                        </button>
+                            {isEditing ? (
+                                <div className="space-y-2">
+                                    <input
+                                        value={draftTitle}
+                                        onChange={(e) => setDraftTitle(e.target.value)}
+                                        className="w-full rounded-xl border border-ai-border bg-ai-bg px-3 py-2 text-sm text-ai-text outline-none"
+                                        autoFocus
+                                    />
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => submitRename(session.id)}
+                                            className="rounded-xl bg-ai-dark px-3 py-1.5 text-xs font-medium text-white"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingSessionId(null);
+                                                setDraftTitle("");
+                                            }}
+                                            className="rounded-xl border border-ai-border px-3 py-1.5 text-xs font-medium text-ai-text"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setActiveSessionId(session.id);
+                                            router.push("/chat");
+                                        }}
+                                        className="w-full text-left"
+                                    >
+                                        <div className="line-clamp-2 text-sm font-medium text-ai-text">
+                                            {session.title || "Untitled session"}
+                                        </div>
+                                    </button>
+
+                                    <div className="mt-3 flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => startRename(session.id, session.title)}
+                                            className="text-xs font-medium text-ai-text-muted hover:text-ai-text"
+                                        >
+                                            Rename
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteSession(session.id)}
+                                            className="text-xs font-medium text-ai-danger"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     );
                 })}
             </div>

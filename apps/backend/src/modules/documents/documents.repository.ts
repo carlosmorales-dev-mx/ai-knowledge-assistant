@@ -228,6 +228,29 @@ export class DocumentsRepository {
             },
         });
     }
+
+    async findDocumentForDelete(documentId: string, userId: string) {
+        return prisma.document.findFirst({
+            where: {
+                id: documentId,
+                userId,
+            },
+            select: {
+                id: true,
+                userId: true,
+                storagePath: true,
+            },
+        });
+    }
+
+    async deleteByIdAndUserId(documentId: string, userId: string) {
+        return prisma.document.deleteMany({
+            where: {
+                id: documentId,
+                userId,
+            },
+        });
+    }
 }
 
 export const documentsRepository = new DocumentsRepository();

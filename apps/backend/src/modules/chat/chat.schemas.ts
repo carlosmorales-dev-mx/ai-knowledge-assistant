@@ -14,3 +14,11 @@ export const chatMessagesQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
+
+export const renameChatSessionSchema = z.object({
+    title: z
+        .string()
+        .trim()
+        .min(1, "Title is required")
+        .max(120, "Title must be at most 120 characters"),
+});

@@ -128,6 +128,32 @@ export class DocumentsController {
             next(error);
         }
     };
+
+    deleteDocument = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            if (!req.user) {
+                throw new AppError("Unauthorized", 401);
+            }
+
+            const parsedParams = documentIdParamsSchema.parse(req.params);
+
+            await documentsService.deleteUserDocument(
+                parsedParams.id,
+                req.user.id
+            );
+
+            res.status(200).json({
+                success: true,
+                message: "Document deleted successfully",
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 export const documentsController = new DocumentsController();

@@ -11,5 +11,15 @@ router.get(
     authMiddleware,
     chatController.getSessionMessages,
 );
+router.patch(
+    "/sessions/:id",
+    authMiddleware,
+    chatController.renameSession,
+);
+router.delete(
+    "/sessions/:id",
+    authMiddleware,
+    chatController.deleteSession,
+);
 
 export default router;

@@ -4,6 +4,8 @@ import { documentVectorStoreService } from "../documents/document-vector-store.s
 import { chatContextService } from "./chat-context.service.js";
 import { chatLlmService } from "./chat-llm.service.js";
 import { chatMemoryService } from "./chat-memory.service.js";
+import { prisma } from "../../lib/prisma.js";
+import { AppError } from "../../shared/errors/app-error.js";
 
 type RetrievalResult = {
     id: string;
@@ -255,7 +257,54 @@ export class ChatService {
             pageSize,
         );
     }
+    async renameSession(userId: string, sessionId: string, title: string) {
+        const existingSession = await prisma.chatSession.findFirst({
+            where: {
+                id: sessionId,
+                userId,
+            },
+        });
 
+        if (!existingSession) {
+            throw new AppError("Session not found", 404);
+        }
+
+        return prisma.chatSession.update({
+            where: {
+                id: sessionId,
+            },
+            data: {
+                title,
+            },
+            select: {
+                id: true,
+                title: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    }
+
+    async deleteSession(userId: string, sessionId: string) {
+        const existingSession = await prisma.chatSession.findFirst({
+            where: {
+                id: sessionId,
+                userId,
+            },
+        });
+
+        if (!existingSession) {
+            throw new AppError("Session not found", 404);
+        }
+
+        await prisma.chatSession.delete({
+            where: {
+                id: sessionId,
+            },
+        });
+
+        return { success: true };
+    }
     private buildRetrievalQuery(input: {
         message: string;
         recentMessages: RecentMessage[];

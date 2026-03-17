@@ -37,3 +37,20 @@ export async function uploadDocumentRequest(file: File) {
 
     return response.json();
 }
+
+export async function deleteDocumentRequest(documentId: string) {
+    const token = getAccessToken();
+
+    const response = await fetch(`${env.apiUrl}/documents/${documentId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to delete document");
+    }
+
+    return response.json();
+}
