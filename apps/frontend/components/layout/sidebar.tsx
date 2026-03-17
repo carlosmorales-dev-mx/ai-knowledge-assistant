@@ -175,6 +175,12 @@ export function Sidebar() {
                 {data?.data?.map((session) => {
                     const isActive = activeSessionId === session.id;
                     const isEditing = editingSessionId === session.id;
+                    const isRenaming =
+                        renameSessionMutation.isPending &&
+                        renameSessionMutation.variables?.sessionId === session.id;
+                    const isDeleting =
+                        deleteSessionMutation.isPending &&
+                        deleteSessionMutation.variables === session.id;
 
                     return (
                         <div
@@ -189,17 +195,30 @@ export function Sidebar() {
                                     <input
                                         value={draftTitle}
                                         onChange={(e) => setDraftTitle(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                void submitRename(session.id);
+                                            }
+
+                                            if (e.key === "Escape") {
+                                                setEditingSessionId(null);
+                                                setDraftTitle("");
+                                            }
+                                        }}
                                         className="w-full rounded-xl border border-ai-border bg-ai-bg px-3 py-2 text-sm text-ai-text outline-none"
                                         autoFocus
+                                        disabled={isRenaming}
                                     />
 
                                     <div className="flex gap-2">
                                         <button
                                             type="button"
                                             onClick={() => submitRename(session.id)}
-                                            className="rounded-xl bg-ai-dark px-3 py-1.5 text-xs font-medium text-white"
+                                            disabled={isRenaming}
+                                            className="rounded-xl bg-ai-dark px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
                                         >
-                                            Save
+                                            {isRenaming ? "Saving..." : "Save"}
                                         </button>
                                         <button
                                             type="button"
@@ -207,7 +226,8 @@ export function Sidebar() {
                                                 setEditingSessionId(null);
                                                 setDraftTitle("");
                                             }}
-                                            className="rounded-xl border border-ai-border px-3 py-1.5 text-xs font-medium text-ai-text"
+                                            disabled={isRenaming}
+                                            className="rounded-xl border border-ai-border px-3 py-1.5 text-xs font-medium text-ai-text disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             Cancel
                                         </button>
@@ -231,16 +251,18 @@ export function Sidebar() {
                                         <button
                                             type="button"
                                             onClick={() => startRename(session.id, session.title)}
-                                            className="text-xs font-medium text-ai-text-muted hover:text-ai-text"
+                                            disabled={isDeleting}
+                                            className="text-xs font-medium text-ai-text-muted hover:text-ai-text disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             Rename
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteSession(session.id)}
-                                            className="text-xs font-medium text-ai-danger"
+                                            disabled={isDeleting}
+                                            className="text-xs font-medium text-ai-danger disabled:cursor-not-allowed disabled:opacity-60"
                                         >
-                                            Delete
+                                            {isDeleting ? "Deleting..." : "Delete"}
                                         </button>
                                     </div>
                                 </>

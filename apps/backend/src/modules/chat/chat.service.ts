@@ -52,27 +52,15 @@ export class ChatService {
         const { userId, message, sessionId, limit = 5 } = input;
         const isNewSession = !sessionId;
 
-        /**
-         * 1) Resolve session
-         */
         const session = await chatMemoryService.resolveSession(userId, sessionId);
 
-        /**
-         * 2) Persist user message first
-         */
         await chatMemoryService.createUserMessage(session.id, message);
 
-        /**
-         * 3) Auto-title only when session is newly created
-         */
         if (isNewSession) {
             const generatedTitle = this.generateSessionTitle(message);
             await chatMemoryService.updateSessionTitle(session.id, generatedTitle);
         }
 
-        /**
-         * 4) Load recent conversation memory
-         */
         const recentMessages = await chatMemoryService.getRecentMessages(
             session.id,
             this.RECENT_MESSAGES_LIMIT,
@@ -81,23 +69,14 @@ export class ChatService {
         const conversationHistory =
             chatContextService.buildConversationHistory(recentMessages);
 
-        /**
-         * 5) Build better retrieval query for follow-up questions
-         */
         const retrievalQuery = this.buildRetrievalQuery({
             message,
             recentMessages,
         });
 
-        /**
-         * 6) Generate embedding for retrieval query
-         */
         const queryEmbedding =
             await documentEmbeddingsService.generateEmbedding(retrievalQuery);
 
-        /**
-         * 7) Retrieve relevant chunks from vector store
-         */
         const retrievalResult =
             await documentVectorStoreService.querySimilarChunks({
                 embedding: queryEmbedding,
@@ -121,9 +100,6 @@ export class ChatService {
             (result) => result.content && result.metadata,
         );
 
-        /**
-         * 8) Fallback if no valid results were retrieved
-         */
         if (validResults.length === 0) {
             const fallback = "No relevant document context found for this user.";
 
@@ -138,9 +114,6 @@ export class ChatService {
             };
         }
 
-        /**
-         * 9) Intelligent context packing
-         */
         const filteredResults = validResults
             .filter(
                 (result) =>
@@ -179,9 +152,6 @@ export class ChatService {
             packedContextLength += sourceBlock.length;
         }
 
-        /**
-         * 10) Fallback if similarity filtering removed everything
-         */
         if (packedSources.length === 0) {
             const fallback =
                 "Relevant chunks were found, but none passed the similarity threshold.";
@@ -197,9 +167,6 @@ export class ChatService {
             };
         }
 
-        /**
-         * 11) Build final prompt with conversation history + retrieved context
-         */
         const retrievedContext =
             chatContextService.buildSourcesContext(packedSources);
 
@@ -209,11 +176,9 @@ export class ChatService {
             context: retrievedContext,
         });
 
-        /**
-         * 12) Generate answer using LLM
-         */
         try {
-            const answer = await chatLlmService.generateAnswer(finalPrompt);
+            const rawAnswer = await chatLlmService.generateAnswer(finalPrompt);
+            const answer = this.sanitizeAssistantAnswer(rawAnswer);
 
             await chatMemoryService.createAssistantMessage(session.id, answer);
             await chatMemoryService.touchSession(session.id);
@@ -257,6 +222,7 @@ export class ChatService {
             pageSize,
         );
     }
+
     async renameSession(userId: string, sessionId: string, title: string) {
         const existingSession = await prisma.chatSession.findFirst({
             where: {
@@ -305,6 +271,7 @@ export class ChatService {
 
         return { success: true };
     }
+
     private buildRetrievalQuery(input: {
         message: string;
         recentMessages: RecentMessage[];
@@ -396,6 +363,16 @@ export class ChatService {
         }
 
         return `${normalized.slice(0, maxLength).trimEnd()}...`;
+    }
+
+    private sanitizeAssistantAnswer(answer: string) {
+        return answer
+            .replace(/\*\*(.*?)\*\*/g, "$1")
+            .replace(/\*(.*?)\*/g, "$1")
+            .replace(/^#{1,6}\s+/gm, "")
+            .replace(/^\s*[-*]\s+/gm, "")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
     }
 }
 

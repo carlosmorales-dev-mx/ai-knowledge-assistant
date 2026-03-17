@@ -18,7 +18,28 @@ export default function DocumentsPage() {
     function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0];
         if (!file) return;
-        uploadMutation.mutate(file);
+
+        uploadMutation.mutate(file, {
+            onSuccess: () => {
+                addToast({
+                    type: "success",
+                    title: "Document uploaded",
+                    description: `${file.name} was uploaded successfully`,
+                });
+                event.target.value = "";
+            },
+            onError: (error) => {
+                const message =
+                    error instanceof Error ? error.message : "Upload failed";
+
+                addToast({
+                    type: "error",
+                    title: "Upload failed",
+                    description: message,
+                });
+                event.target.value = "";
+            },
+        });
     }
 
     async function handleDeleteDocument(documentId: string) {
@@ -71,18 +92,13 @@ export default function DocumentsPage() {
                     type="file"
                     accept="application/pdf"
                     onChange={handleUpload}
-                    className="block w-full rounded-2xl border border-ai-border bg-ai-surface-soft px-4 py-3 text-sm text-ai-text file:mr-4 file:rounded-xl file:border-0 file:bg-ai-dark file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:opacity-95"
+                    disabled={uploadMutation.isPending}
+                    className="block w-full rounded-2xl border border-ai-border bg-ai-surface-soft px-4 py-3 text-sm text-ai-text disabled:cursor-not-allowed disabled:opacity-60 file:mr-4 file:rounded-xl file:border-0 file:bg-ai-dark file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:opacity-95"
                 />
 
                 {uploadMutation.isPending && (
                     <p className="mt-4 text-sm font-medium text-ai-primary">
                         Uploading document...
-                    </p>
-                )}
-
-                {uploadMutation.isError && (
-                    <p className="mt-4 text-sm font-medium text-ai-danger">
-                        Failed to upload document.
                     </p>
                 )}
             </Card>
@@ -101,37 +117,44 @@ export default function DocumentsPage() {
                     </Card>
                 )}
 
-                {documentsQuery.data?.data?.map((doc: Document) => (
-                    <Card key={doc.id} className="p-6 transition hover:shadow-md">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                            <div className="min-w-0">
-                                <h2 className="truncate text-xl font-semibold text-ai-text">
-                                    {doc.originalName}
-                                </h2>
-                                <p className="mt-1 truncate text-sm text-ai-text-muted">
-                                    {doc.filename}
-                                </p>
+                {documentsQuery.data?.data?.map((doc: Document) => {
+                    const isDeleting =
+                        deleteDocumentMutation.isPending &&
+                        deleteDocumentMutation.variables === doc.id;
+
+                    return (
+                        <Card key={doc.id} className="p-6 transition hover:shadow-md">
+                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                <div className="min-w-0">
+                                    <h2 className="truncate text-xl font-semibold text-ai-text">
+                                        {doc.originalName}
+                                    </h2>
+                                    <p className="mt-1 truncate text-sm text-ai-text-muted">
+                                        {doc.filename}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <StatusBadge status={doc.status} />
+                                    <button
+                                        type="button"
+                                        disabled={isDeleting}
+                                        onClick={() => handleDeleteDocument(doc.id)}
+                                        className="rounded-xl border border-ai-danger/20 px-3 py-2 text-sm font-medium text-ai-danger transition hover:bg-ai-danger/5 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {isDeleting ? "Deleting..." : "Delete"}
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <StatusBadge status={doc.status} />
-                                <button
-                                    type="button"
-                                    onClick={() => handleDeleteDocument(doc.id)}
-                                    className="rounded-xl border border-ai-danger/20 px-3 py-2 text-sm font-medium text-ai-danger transition hover:bg-ai-danger/5"
-                                >
-                                    Delete
-                                </button>
+                            <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+                                <InfoItem label="Chunks" value={String(doc.chunkCount)} />
+                                <InfoItem label="Type" value={doc.mimeType} />
+                                <InfoItem label="Size" value={formatFileSize(doc.fileSize)} />
                             </div>
-                        </div>
-
-                        <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
-                            <InfoItem label="Chunks" value={String(doc.chunkCount)} />
-                            <InfoItem label="Type" value={doc.mimeType} />
-                            <InfoItem label="Size" value={`${doc.fileSize} bytes`} />
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    );
+                })}
             </div>
         </div>
     );
@@ -159,4 +182,13 @@ function StatusBadge({ status }: { status: string }) {
                     : "primary";
 
     return <Badge tone={tone}>{status}</Badge>;
+}
+
+function formatFileSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) {
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
