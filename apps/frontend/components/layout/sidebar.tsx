@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useChatSessions } from "@/features/sessions/hooks/use-chat-sessions";
 import { useChatSessionStore } from "@/stores/chat-session.store";
 import { useAuthStore } from "@/stores/auth.store";
+import { useToastStore } from "@/stores/toast.store";
 import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
@@ -15,10 +16,18 @@ export function Sidebar() {
     const { activeSessionId, setActiveSessionId } = useChatSessionStore();
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
+    const addToast = useToastStore((state) => state.addToast);
 
     function handleLogout() {
         logout();
         setActiveSessionId(undefined);
+
+        addToast({
+            type: "success",
+            title: "Logged out",
+            description: "See you soon 👋",
+        });
+
         router.replace("/login");
     }
 

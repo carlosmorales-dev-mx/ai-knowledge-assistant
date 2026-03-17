@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 import { env } from "@/lib/env";
-import { getAccessToken } from "@/lib/storage";
+import { getAccessToken, removeAccessToken } from "@/lib/storage";
 import { ApiClientError, ApiErrorResponse } from "@/types/api";
 
 function createApiClient(): AxiosInstance {
@@ -20,6 +20,20 @@ function createApiClient(): AxiosInstance {
 
         return config;
     });
+
+    client.interceptors.response.use(
+        (response) => response,
+        (error) => {
+            if (error.response?.status === 401) {
+                if (typeof window !== "undefined") {
+                    removeAccessToken();
+                    window.location.href = "/login";
+                }
+            }
+
+            return Promise.reject(error);
+        }
+    );
 
     return client;
 }

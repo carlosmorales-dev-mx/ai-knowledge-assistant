@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useEffect, useState } from "react";
 import { makeQueryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth.store";
+import { ToastContainer } from "@/components/ui/toast";
 
 type ProvidersProps = {
     children: React.ReactNode;
@@ -27,6 +28,7 @@ export default function Providers({ children }: ProvidersProps) {
         <QueryClientProvider client={queryClient}>
             <AuthBootstrap />
             {children}
+            <ToastContainer />
             <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
     );
