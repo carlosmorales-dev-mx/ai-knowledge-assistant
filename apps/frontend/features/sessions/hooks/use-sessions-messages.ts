@@ -8,5 +8,6 @@ export function useSessionMessages(sessionId?: string) {
         queryKey: ["session-messages", sessionId],
         queryFn: () => getSessionMessagesRequest(sessionId as string),
         enabled: !!sessionId,
+        staleTime: 0,
     });
 }

@@ -1,8 +1,10 @@
 export type ChatSource = {
-    documentId?: string;
-    documentName?: string;
-    chunkId?: string;
-    content?: string;
+    id: string;
+    documentId: string;
+    filename: string;
+    chunkIndex: number;
+    content: string;
+    distance?: number | null;
 };
 
 export type SendChatMessageRequest = {

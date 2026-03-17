@@ -3,6 +3,12 @@ export type LoginRequest = {
     password: string;
 };
 
+export type RegisterRequest = {
+    fullName: string;
+    email: string;
+    password: string;
+};
+
 export type AuthUser = {
     id: string;
     email: string;
@@ -11,11 +17,17 @@ export type AuthUser = {
     updatedAt: string;
 };
 
-export type LoginResponse = {
+export type AuthPayload = {
+    user: AuthUser;
+    accessToken: string;
+};
+
+export type ApiSuccessResponse<T> = {
     success: boolean;
     message: string;
-    data: {
-        user: AuthUser;
-        accessToken: string;
-    };
+    data: T;
 };
+
+export type LoginResponse = ApiSuccessResponse<AuthPayload>;
+export type RegisterResponse = ApiSuccessResponse<AuthPayload>;
+export type MeResponse = ApiSuccessResponse<AuthUser>;

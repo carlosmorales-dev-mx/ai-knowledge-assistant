@@ -6,6 +6,8 @@ export function makeQueryClient() {
             queries: {
                 retry: 1,
                 refetchOnWindowFocus: false,
+                staleTime: 0,
+                gcTime: 1000 * 60 * 5,
             },
             mutations: {
                 retry: 0,

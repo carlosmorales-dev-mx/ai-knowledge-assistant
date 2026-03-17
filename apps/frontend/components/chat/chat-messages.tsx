@@ -1,7 +1,12 @@
+import { ChatSource } from "@/features/chat/types/chat.types";
+import { Card } from "@/components/ui/card";
+import { Panel } from "@/components/ui/panel";
+
 export type ChatMessageItem = {
     id: string;
     role: "user" | "assistant";
     content: string;
+    sources?: ChatSource[];
 };
 
 type ChatMessagesProps = {
@@ -9,36 +14,72 @@ type ChatMessagesProps = {
 };
 
 export function ChatMessages({ messages }: ChatMessagesProps) {
-    if (messages.length === 0) {
-        return null;
-    }
+    if (messages.length === 0) return null;
 
     return (
-        <div
-            style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-            }}
-        >
-            {messages.map((message) => (
-                <div
-                    key={message.id}
-                    style={{
-                        alignSelf: message.role === "user" ? "flex-end" : "flex-start",
-                        maxWidth: "70%",
-                        padding: "12px 16px",
-                        borderRadius: "12px",
-                        background: message.role === "user" ? "#1f1f1f" : "#111",
-                        border: "1px solid #2a2a2a",
-                    }}
-                >
-                    <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{message.content}</p>
-                </div>
-            ))}
+        <div className="mx-auto flex max-w-4xl flex-col gap-6">
+            {messages.map((message) => {
+                const isUser = message.role === "user";
+
+                return (
+                    <div
+                        key={message.id}
+                        className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                    >
+                        <div className={isUser ? "max-w-xl" : "max-w-3xl"}>
+                            <div
+                                className={`rounded-[28px] px-5 py-4 shadow-sm ${isUser
+                                        ? "bg-ai-dark text-white"
+                                        : "border border-ai-border bg-white text-ai-text"
+                                    }`}
+                            >
+                                <p className="whitespace-pre-wrap text-[15px] leading-7">
+                                    {message.content}
+                                </p>
+                            </div>
+
+                            {!isUser && message.sources && message.sources.length > 0 && (
+                                <Card className="mt-3 p-4">
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ai-text-muted">
+                                            Sources
+                                        </p>
+                                        <span className="text-xs text-ai-text-soft">
+                                            {message.sources.length} found
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {message.sources.map((source) => (
+                                            <Panel key={source.id} className="p-4">
+                                                <div className="mb-2 flex flex-wrap items-center gap-2">
+                                                    <p className="text-sm font-semibold text-ai-text">
+                                                        {source.filename}
+                                                    </p>
+
+                                                    <span className="rounded-full border border-ai-border bg-white px-2 py-1 text-[11px] font-medium text-ai-text-muted">
+                                                        chunk {source.chunkIndex}
+                                                    </span>
+                                                </div>
+
+                                                {typeof source.distance === "number" && (
+                                                    <p className="mb-2 text-xs text-ai-text-muted">
+                                                        Distance: {source.distance.toFixed(4)}
+                                                    </p>
+                                                )}
+
+                                                <p className="whitespace-pre-wrap text-sm leading-6 text-ai-text-muted">
+                                                    {source.content}
+                                                </p>
+                                            </Panel>
+                                        ))}
+                                    </div>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }
