@@ -9,6 +9,8 @@ import { useRegister } from "@/features/auth/hooks/use-register";
 import { useAuthStore } from "@/stores/auth.store";
 import { useToastStore } from "@/stores/toast.store";
 import { AuthShell } from "./auth-shell";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
     registerFormSchema,
     type RegisterFormValues,
@@ -53,7 +55,7 @@ export function RegisterForm() {
 
             addToast({
                 type: "success",
-                title: "Account created 🎉",
+                title: "Account created",
                 description: "Welcome to your AI workspace",
             });
 
@@ -71,89 +73,112 @@ export function RegisterForm() {
     };
 
     if (!hasBootstrapped || isBootstrapping) {
-        return <div className="p-10">Loading...</div>;
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-[#fafbfd] text-[#64748b]">
+                <div className="flex items-center gap-3">
+                    <svg className="h-5 w-5 animate-spin text-[#0066ff]" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="52" strokeDashoffset="14" strokeLinecap="round" />
+                    </svg>
+                    Loading workspace...
+                </div>
+            </div>
+        );
     }
 
     return (
         <AuthShell
             title="Create account"
-            description="Start using your AI Knowledge Assistant"
+            description="Set up your workspace and start chatting with your documents."
             footer={
                 <>
                     Already have an account?{" "}
-                    <Link href="/login" className="font-medium text-ai-text underline">
+                    <Link
+                        href="/login"
+                        className="font-semibold text-[#0066ff] transition hover:text-[#0052cc]"
+                    >
                         Login
                     </Link>
                 </>
             }
         >
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div>
-                    <input
+                <Field label="Full name" error={errors.fullName?.message}>
+                    <Input
                         type="text"
-                        placeholder="Full name"
+                        placeholder="Your full name"
                         {...register("fullName")}
-                        className="w-full rounded-2xl border border-ai-border bg-ai-bg px-4 py-3 text-sm outline-none transition focus:border-ai-dark"
+                        autoComplete="name"
                     />
-                    {errors.fullName && (
-                        <p className="mt-2 text-sm text-ai-danger">{errors.fullName.message}</p>
-                    )}
-                </div>
+                </Field>
 
-                <div>
-                    <input
+                <Field label="Email" error={errors.email?.message}>
+                    <Input
                         type="email"
-                        placeholder="Email"
+                        placeholder="you@example.com"
                         {...register("email")}
-                        className="w-full rounded-2xl border border-ai-border bg-ai-bg px-4 py-3 text-sm outline-none transition focus:border-ai-dark"
+                        autoComplete="email"
                     />
-                    {errors.email && (
-                        <p className="mt-2 text-sm text-ai-danger">{errors.email.message}</p>
-                    )}
-                </div>
+                </Field>
 
-                <div>
-                    <input
+                <Field label="Password" error={errors.password?.message}>
+                    <Input
                         type="password"
-                        placeholder="Password"
+                        placeholder="Create a password"
                         {...register("password")}
-                        className="w-full rounded-2xl border border-ai-border bg-ai-bg px-4 py-3 text-sm outline-none transition focus:border-ai-dark"
+                        autoComplete="new-password"
                     />
-                    {errors.password && (
-                        <p className="mt-2 text-sm text-ai-danger">{errors.password.message}</p>
-                    )}
-                </div>
+                </Field>
 
-                <div>
-                    <input
+                <Field
+                    label="Confirm password"
+                    error={errors.confirmPassword?.message}
+                >
+                    <Input
                         type="password"
-                        placeholder="Confirm password"
+                        placeholder="Repeat your password"
                         {...register("confirmPassword")}
-                        className="w-full rounded-2xl border border-ai-border bg-ai-bg px-4 py-3 text-sm outline-none transition focus:border-ai-dark"
+                        autoComplete="new-password"
                     />
-                    {errors.confirmPassword && (
-                        <p className="mt-2 text-sm text-ai-danger">
-                            {errors.confirmPassword.message}
-                        </p>
-                    )}
-                </div>
+                </Field>
 
                 {registerMutation.isError && (
-                    <div className="rounded-2xl border border-ai-danger/20 bg-ai-danger/5 px-4 py-3 text-sm text-ai-danger">
+                    <div className="rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-[13px] text-red-600">
                         {registerMutation.error.message}
                     </div>
                 )}
 
-                <button
+                <Button
                     type="submit"
                     disabled={isSubmitting || registerMutation.isPending}
-                    className="w-full rounded-2xl bg-ai-dark px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-12 w-full"
                 >
                     {isSubmitting || registerMutation.isPending
                         ? "Creating account..."
-                        : "Register"}
-                </button>
+                        : "Create account"}
+                </Button>
             </form>
         </AuthShell>
+    );
+}
+
+function Field({
+    label,
+    error,
+    children,
+}: {
+    label: string;
+    error?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div>
+            <label className="mb-2 block text-[13px] font-medium text-[#0a0a0a]">
+                {label}
+            </label>
+            {children}
+            {error ? (
+                <p className="mt-2 text-[13px] text-red-500">{error}</p>
+            ) : null}
+        </div>
     );
 }
