@@ -1,9 +1,9 @@
 export type ChatSource = {
     id: string;
-    documentId: string;
-    filename: string;
-    chunkIndex: number;
-    content: string;
+    documentId: string | null;
+    filename: string | null;
+    chunkIndex: number | null;
+    content: string | null;
     distance?: number | null;
 };
 

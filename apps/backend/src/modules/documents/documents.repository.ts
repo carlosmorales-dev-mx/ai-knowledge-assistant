@@ -1,6 +1,8 @@
 import { DocumentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 
+const VECTOR_ID_UPDATE_BATCH_SIZE = 25;
+
 export class DocumentsRepository {
     async findManyByUserId(userId: string) {
         return prisma.document.findMany({
@@ -162,15 +164,13 @@ export class DocumentsRepository {
                 return [];
             }
 
-            for (const chunk of chunks) {
-                await tx.documentChunk.create({
-                    data: {
-                        documentId,
-                        chunkIndex: chunk.chunkIndex,
-                        content: chunk.content,
-                    },
-                });
-            }
+            await tx.documentChunk.createMany({
+                data: chunks.map((chunk) => ({
+                    documentId,
+                    chunkIndex: chunk.chunkIndex,
+                    content: chunk.content,
+                })),
+            });
 
             return tx.documentChunk.findMany({
                 where: {
@@ -200,18 +200,22 @@ export class DocumentsRepository {
             return;
         }
 
-        return prisma.$transaction(
-            chunks.map((chunk) =>
-                prisma.documentChunk.update({
-                    where: {
-                        id: chunk.id,
-                    },
-                    data: {
-                        vectorId: chunk.vectorId,
-                    },
-                })
-            )
-        );
+        for (let index = 0; index < chunks.length; index += VECTOR_ID_UPDATE_BATCH_SIZE) {
+            const batch = chunks.slice(index, index + VECTOR_ID_UPDATE_BATCH_SIZE);
+
+            await Promise.all(
+                batch.map((chunk) =>
+                    prisma.documentChunk.update({
+                        where: {
+                            id: chunk.id,
+                        },
+                        data: {
+                            vectorId: chunk.vectorId,
+                        },
+                    })
+                )
+            );
+        }
     }
 
     async findDocumentForProcessingById(documentId: string) {

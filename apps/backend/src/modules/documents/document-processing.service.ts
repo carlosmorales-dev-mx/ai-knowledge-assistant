@@ -44,23 +44,25 @@ export class DocumentProcessingService {
                     persistedChunks.map((chunk) => chunk.content)
                 );
 
-                await documentVectorStoreService.upsertDocumentChunks({
-                    chunks: persistedChunks.map((chunk, index) => {
-                        const vectorId = buildChunkVectorId(documentId, chunk.chunkIndex);
+                const vectorChunks = persistedChunks.map((chunk, index) => {
+                    const vectorId = buildChunkVectorId(documentId, chunk.chunkIndex);
 
-                        return {
-                            id: vectorId,
-                            content: chunk.content,
-                            embedding: embeddings[index],
-                            metadata: {
-                                userId: document.userId,
-                                documentId,
-                                chunkId: chunk.id,
-                                chunkIndex: chunk.chunkIndex,
-                                filename: document.filename,
-                            },
-                        };
-                    }),
+                    return {
+                        id: vectorId,
+                        content: chunk.content,
+                        embedding: embeddings[index],
+                        metadata: {
+                            userId: document.userId,
+                            documentId,
+                            chunkId: chunk.id,
+                            chunkIndex: chunk.chunkIndex,
+                            filename: document.filename,
+                        },
+                    };
+                });
+
+                await documentVectorStoreService.upsertDocumentChunks({
+                    chunks: vectorChunks,
                 });
 
                 await documentsRepository.updateChunkVectorIds(

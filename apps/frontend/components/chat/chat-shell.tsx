@@ -10,6 +10,7 @@ import { useSendChatMessage } from "@/features/chat/hooks/use-send-chat-message"
 import { useSessionMessages } from "@/features/sessions/hooks/use-sessions-messages";
 import { useChatSessionStore } from "@/stores/chat-session.store";
 import { Card } from "@/components/ui/card";
+import type { ChatSource } from "@/features/chat/types/chat.types";
 
 export function ChatShell() {
     const { activeSessionId, setActiveSessionId } = useChatSessionStore();
@@ -27,14 +28,32 @@ export function ChatShell() {
 
         if (!sessionMessagesQuery.data?.data) return;
 
-        const mappedMessages: ChatMessageItem[] =
-            sessionMessagesQuery.data.data.map((message) => ({
-                id: message.id,
-                role: message.role === "USER" ? "user" : "assistant",
-                content: message.content,
-            }));
+        setMessages((prevMessages) => {
+            const mappedMessages: ChatMessageItem[] =
+                sessionMessagesQuery.data.data.map((message) => {
+                    const mappedRole = message.role === "USER" ? "user" : "assistant";
 
-        setMessages(mappedMessages);
+                    const existingAssistantMessageWithSources =
+                        mappedRole === "assistant"
+                            ? prevMessages.find(
+                                (prev) =>
+                                    prev.role === "assistant" &&
+                                    prev.content.trim() === message.content.trim() &&
+                                    Array.isArray(prev.sources) &&
+                                    prev.sources.length > 0
+                            )
+                            : undefined;
+
+                    return {
+                        id: message.id,
+                        role: mappedRole,
+                        content: message.content,
+                        sources: existingAssistantMessageWithSources?.sources ?? [],
+                    };
+                });
+
+            return mappedMessages;
+        });
     }, [activeSessionId, sessionMessagesQuery.data]);
 
     useEffect(() => {
@@ -62,6 +81,19 @@ export function ChatShell() {
                 setActiveSessionId(backendData.sessionId);
             }
 
+            const normalizedSources: ChatSource[] = Array.isArray(backendData.sources)
+                ? backendData.sources.map((source) => ({
+                    id: source.id,
+                    documentId: source.documentId ?? null,
+                    filename: source.filename ?? "Unknown document",
+                    chunkIndex:
+                        typeof source.chunkIndex === "number" ? source.chunkIndex : null,
+                    content: source.content ?? "",
+                    distance:
+                        typeof source.distance === "number" ? source.distance : null,
+                }))
+                : [];
+
             const assistantMessage: ChatMessageItem = {
                 id: crypto.randomUUID(),
                 role: "assistant",
@@ -69,7 +101,7 @@ export function ChatShell() {
                     backendData.answer ??
                     backendData.fallback ??
                     "No response received.",
-                sources: backendData.sources ?? [],
+                sources: normalizedSources,
             };
 
             setMessages((prev) => [...prev, assistantMessage]);
@@ -80,6 +112,7 @@ export function ChatShell() {
                     id: crypto.randomUUID(),
                     role: "assistant",
                     content: "There was an error sending your message.",
+                    sources: [],
                 },
             ]);
         }

@@ -20,6 +20,10 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
         <div className="mx-auto flex max-w-4xl flex-col gap-6">
             {messages.map((message) => {
                 const isUser = message.role === "user";
+                const hasSources =
+                    !isUser &&
+                    Array.isArray(message.sources) &&
+                    message.sources.length > 0;
 
                 return (
                     <div
@@ -38,27 +42,30 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
                                 </p>
                             </div>
 
-                            {!isUser && message.sources && message.sources.length > 0 && (
+                            {hasSources && (
                                 <Card className="mt-3 p-4">
                                     <div className="mb-3 flex items-center justify-between">
                                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ai-text-muted">
                                             Sources
                                         </p>
                                         <span className="text-xs text-ai-text-soft">
-                                            {message.sources.length} found
+                                            {message.sources!.length} found
                                         </span>
                                     </div>
 
                                     <div className="space-y-3">
-                                        {message.sources.map((source) => (
+                                        {message.sources!.map((source) => (
                                             <Panel key={source.id} className="p-4">
                                                 <div className="mb-2 flex flex-wrap items-center gap-2">
                                                     <p className="text-sm font-semibold text-ai-text">
-                                                        {source.filename}
+                                                        {source.filename || "Unknown document"}
                                                     </p>
 
                                                     <span className="rounded-full border border-ai-border bg-white px-2 py-1 text-[11px] font-medium text-ai-text-muted">
-                                                        chunk {source.chunkIndex}
+                                                        chunk{" "}
+                                                        {typeof source.chunkIndex === "number"
+                                                            ? source.chunkIndex
+                                                            : "-"}
                                                     </span>
                                                 </div>
 
@@ -69,7 +76,7 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
                                                 )}
 
                                                 <p className="whitespace-pre-wrap text-sm leading-6 text-ai-text-muted">
-                                                    {source.content}
+                                                    {source.content || "No source content available."}
                                                 </p>
                                             </Panel>
                                         ))}
