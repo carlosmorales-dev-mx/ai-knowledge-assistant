@@ -3,6 +3,14 @@ import { z } from "zod";
 
 config();
 
+function sanitizeEnvValue(value: unknown) {
+    if (typeof value !== "string") {
+        return value;
+    }
+
+    return value.trim().replace(/^['"]+|['"]+$/g, "");
+}
+
 const envSchema = z.object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().default(9000),
@@ -29,7 +37,14 @@ const envSchema = z.object({
         .min(1, "CHROMA_COLLECTION_NAME is required"),
 });
 
-const parsedEnv = envSchema.safeParse(process.env);
+const rawEnv = {
+    ...process.env,
+    DATABASE_URL: sanitizeEnvValue(process.env.DATABASE_URL),
+    CHROMA_URL: sanitizeEnvValue(process.env.CHROMA_URL),
+    SUPABASE_URL: sanitizeEnvValue(process.env.SUPABASE_URL),
+};
+
+const parsedEnv = envSchema.safeParse(rawEnv);
 
 if (!parsedEnv.success) {
     console.error(

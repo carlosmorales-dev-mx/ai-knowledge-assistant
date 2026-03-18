@@ -1,12 +1,16 @@
 import { defineConfig, env } from "prisma/config";
 import "dotenv/config";
 
+function sanitizeEnvValue(value: string) {
+  return value.trim().replace(/^['"]+|['"]+$/g, "");
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: sanitizeEnvValue(env("DATABASE_URL")),
   },
 });
