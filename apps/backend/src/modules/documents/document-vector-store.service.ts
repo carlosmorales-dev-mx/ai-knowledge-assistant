@@ -15,8 +15,14 @@ export class DocumentVectorStoreService {
     private collection: Collection | null = null;
 
     constructor() {
+        const chromaUrl = new URL(env.CHROMA_URL);
+
         this.client = new ChromaClient({
-            path: env.CHROMA_URL,
+            host: chromaUrl.hostname,
+            port: Number(
+                chromaUrl.port || (chromaUrl.protocol === "https:" ? 443 : 80)
+            ),
+            ssl: chromaUrl.protocol === "https:",
         });
     }
 
